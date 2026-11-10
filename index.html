@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BİLSEM Zeka ve Mantık Oyunu (50 Seviye)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Fredoka', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        .bg-pattern {
+            background-color: #f0fdf4;
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .card-shadow {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        }
+
+        .btn-bounce:active {
+            transform: scale(0.95);
+        }
+
+        /* Pulse Animations for Level Node */
+        .level-current {
+            animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 12px rgba(99, 102, 241, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 bg-pattern min-h-screen flex flex-col items-center justify-between p-2 sm:p-4">
+
+    <!-- Header / Navbar -->
+    <header class="w-full max-w-md bg-white rounded-2xl p-4 mb-3 card-shadow flex items-center justify-between border-2 border-indigo-100">
+        <button id="homeBtn" onclick="showLevelMap()" class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-100 transition btn-bounce">
+            <i class="fa-solid fa-house text-lg"></i>
+        </button>
+        <div class="text-center">
+            <h1 class="font-bold text-lg text-indigo-600 flex items-center gap-1 justify-center">
+                <i class="fa-solid fa-brain text-amber-500"></i> BİLSEM ZEKÂ
+            </h1>
+            <p id="headerSubtitle" class="text-xs text-slate-500 font-medium">50 Seviyeli Mantık Oyunu</p>
+        </div>
+        <div class="flex items-center gap-1 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200">
+            <i class="fa-solid fa-star text-amber-500 text-sm"></i>
+            <span id="scoreDisplay" class="font-bold text-amber-700 text-sm">0</span>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="w-full max-w-md flex-1 flex flex-col justify-center">
+
+        <!-- LEVEL MAP VIEW -->
+        <div id="levelMapView" class="bg-white rounded-3xl p-4 sm:p-6 card-shadow border-2 border-indigo-50 flex flex-col h-[78vh]">
+            <div class="text-center mb-4">
+                <h2 class="text-xl font-bold text-slate-800">Seviye Seçimi</h2>
+                <p class="text-xs text-slate-500">BİLSEM aşamalarını tamamlamak için ilerleyin</p>
+            </div>
+            
+            <!-- Scrollable Levels Grid -->
+            <div id="levelsGrid" class="grid grid-cols-4 sm:grid-cols-5 gap-3 overflow-y-auto p-2 flex-1 justify-items-center">
+                <!-- Levels JS ile oluşturulacak -->
+            </div>
+
+            <!-- Bottom Stats inside Map -->
+            <div class="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500">
+                <span id="progressText">İlerleme: 0 / 50</span>
+                <span class="font-bold text-indigo-600">BİLSEM Üst Düzey Zekâ Parkuru</span>
+            </div>
+        </div>
+
+        <!-- QUESTION GAMEPLAY VIEW -->
+        <div id="gameView" class="hidden bg-white rounded-3xl p-4 sm:p-6 card-shadow border-2 border-indigo-50 flex flex-col justify-between min-h-[78vh]">
+            
+            <!-- Question Top Bar -->
+            <div class="flex justify-between items-center mb-3">
+                <span id="levelBadge" class="bg-indigo-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
+                    SEVİYE 1
+                </span>
+                <span id="categoryBadge" class="bg-slate-100 text-slate-600 text-xs font-medium px-3 py-1.5 rounded-full border border-slate-200">
+                    Kategori
+                </span>
+            </div>
+
+            <!-- Question Box -->
+            <div class="flex-1 flex flex-col justify-center items-center my-2">
+                <!-- Text Question -->
+                <h3 id="questionText" class="text-base sm:text-lg font-semibold text-center text-slate-700 mb-4 leading-relaxed">
+                    Soru yükleniyor...
+                </h3>
+
+                <!-- Visual Element Container (SVG/Canvas/HTML Grid) -->
+                <div id="visualContainer" class="w-full flex items-center justify-center p-3 bg-slate-50 rounded-2xl border border-slate-200 min-h-[160px] max-h-[220px]">
+                    <!-- Görsel matris veya ikonlar JS ile eklenecek -->
+                </div>
+            </div>
+
+            <!-- Answer Options Grid -->
+            <div id="optionsGrid" class="grid grid-cols-2 gap-3 mt-4">
+                <!-- Şıklar JS ile dinamik gelecek -->
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- SUCCESS / COMPLETED MODAL -->
+    <div id="modalOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-3xl p-6 text-center max-w-sm w-full card-shadow border-4 border-emerald-400 animate-bounce-short">
+            <div class="w-16 h-16 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+            <h2 id="modalTitle" class="text-2xl font-bold text-slate-800 mb-1">Harika İş!</h2>
+            <p id="modalDesc" class="text-sm text-slate-600 mb-6">Seviyeyi başarıyla tamamladın.</p>
+            
+            <button id="modalNextBtn" onclick="nextLevel()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-emerald-200 transition btn-bounce flex items-center justify-center gap-2">
+                <span>Sonraki Seviye</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Audio Synthesizer for SFX (No External Assets Needed) -->
+    <script>
+        // Web Audio API for Game SFX
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'correct') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+                osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
+                osc.frequency.exponentialRampToValueAtTime(783.99, audioCtx.currentTime + 0.2); // G5
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, audioCtx.currentTime); // A3
+                osc.frequency.linearRampToValueAtTime(130.81, audioCtx.currentTime + 0.2); // C3
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.25);
+            } else if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.05);
+            }
+        }
+    </script>
+
+    <!-- GAME LOGIC & 50 LEVELS DATA -->
+    <script>
+        // Game State
+        let currentLevel = 1;
+        let unlockedLevel = parseInt(localStorage.getItem('bilsem_unlocked')) || 1;
+        let score = parseInt(localStorage.getItem('bilsem_score')) || 0;
+
+        // BİLSEM 1. SINIF SEVİYESİNE UYGUN 50 SEVİYE SORU VERİSETİ
+        const questions = [
+            // Seviye 1-10: Basit Şekil, Küp Sayma ve Örüntüler
+            { 
+                level: 1, 
+                category: "3D Düşünme", 
+                title: "Küp Sayma", 
+                q: "Üst üste koyulmuş küpleri sayın. Burada kaç tane küp var?", 
+                visual: "<div class='text-4xl text-amber-500 flex justify-center gap-1 items-end'><div class='flex flex-col'><i class='fa-solid fa-cube'></i><i class='fa-solid fa-cube'></i></div><div class='flex flex-col'><i class='fa-solid fa-cube'></i></div></div>", 
+                options: ["2", "3", "4", "5"], 
+                answer: "3" 
+            },
+            { 
+                level: 2, 
+                category: "Sayı Örüntüsü", 
+                title: "Birer Artış", 
+                q: "Tırtılın üzerindeki sayılar 1 artıyor. Soru işareti yerine ne gelmeli?", 
+                visual: "<div class='text-2xl font-bold text-emerald-600 tracking-wide'>2 ➔ 3 ➔ 4 ➔ 5 ➔ <span class='text-rose-500 text-3xl font-extrabold'>?</span></div>", 
+                options: ["6", "7", "8", "9"], 
+                answer: "6" 
+            },
+            { 
+                level: 3, 
+                category: "Görsel Mantık", 
+                title: "Gölge Bulma", 
+                q: "Güneş arkasındayken ağacın gölgesi hangi renk görünür?", 
+                visual: "<div class='text-4xl text-emerald-600 flex justify-center gap-4 items-center'><i class='fa-solid fa-tree'></i><i class='fa-solid fa-arrow-right text-slate-400 text-xl'></i><i class='fa-solid fa-tree text-slate-800'></i></div>", 
+                options: ["Yeşil", "Siyah / Koyu", "Sarı", "Kırmızı"], 
+                answer: "Siyah / Koyu" 
+            },
+            { 
+                level: 4, 
+                category: "3D Düşünme", 
+                title: "Küp Yapısı", 
+                q: "Yanyana 3 küp ve üstlerinde 1 küp var. Toplam kaç küp var?", 
+                visual: "<div class='text-3xl text-indigo-500 flex flex-col items-center'><i class='fa-solid fa-cube'></i><div class='flex gap-1'><i class='fa-solid fa-cube'></i><i class='fa-solid fa-cube'></i><i class='fa-solid fa-cube'></i></div></div>", 
+                options: ["3", "4", "5", "6"], 
+                answer: "4" 
+            },
+            { 
+                level: 5, 
+                category: "Kolay Toplama", 
+                title: "Elma Sayma", 
+                q: "Sepette 4 elma vardı. 3 elma daha ekledik. Kaç elma oldu?", 
+                visual: "<div class='text-2xl font-bold text-rose-500 flex items-center justify-center gap-2'>🍎 🍎 🍎 🍎 + 🍎 🍎 🍎 = <span class='text-indigo-600 font-extrabold text-3xl'>?</span></div>", 
+                options: ["6", "7", "8", "9"], 
+                answer: "7" 
+            },
+            { 
+                level: 6, 
+                category: "Şekil Eşleştirme", 
+                title: "Eksik Parça", 
+                q: "Kare, Daire, Üçgen, Kare, Daire... Sıradaki şekil hangisidir?", 
+                visual: "<div class='text-3xl text-indigo-600 flex justify-center gap-2 items-center'><i class='fa-regular fa-square'></i><i class='fa-regular fa-circle'></i><i class='fa-solid fa-play -rotate-90 text-2xl'></i><i class='fa-regular fa-square'></i><i class='fa-regular fa-circle'></i><span class='text-rose-500 font-bold'>?</span></div>", 
+                options: ["Kare", "Daire", "Üçgen", "Yıldız"], 
+                answer: "Üçgen" 
+            },
+            { 
+                level: 7, 
+                category: "3D Düşünme", 
+                title: "Üstten Görünüş", 
+                q: "Bir bardağa tam üstten baktığımızda hangi şekli görürüz?", 
+                visual: "<div class='text-4xl text-amber-600 flex justify-center'><i class='fa-solid fa-glass-water'></i></div>", 
+                options: ["Daire", "Kare", "Üçgen", "Dikdörtgen"], 
+                answer: "Daire" 
+            },
+            { 
+                level: 8, 
+                category: "Kolay Çıkarma", 
+                title: "Balon Uçurma", 
+                q: "Elinde 6 balon vardı. 2 tanesi uçtu. Kaç balon kaldı?", 
+                visual: "<div class='text-2xl font-bold text-sky-500 text-center'>🎈🎈🎈🎈🎈🎈 - 🎈🎈 = <span class='text-rose-500 font-extrabold'>?</span></div>", 
+                options: ["3", "4", "5", "6"], 
+                answer: "4" 
+            },
+            { 
+                level: 9, 
+                category: "Yön Bilgisi", 
+                title: "Hangi Yön?", 
+                q: "Sevimli balık hangi yöne doğru yüzüyor?", 
+                visual: "<div class='text-4xl text-sky-500 flex justify-center'><i class='fa-solid fa-fish'></i></div>", 
+                options: ["Sol", "Sağ", "Yukarı", "Aşağı"], 
+                answer: "Sol" 
+            },
+            { 
+                level: 10, 
+                category: "3D Düşünme", 
+                title: "Kule Yüksekliği", 
+                q: "2 kırmızı küpün üzerine 3 mavi küp koyarsak kule kaç küplük olur?", 
+                visual: "<div class='text-xl font-bold text-slate-700 text-center bg-slate-50 p-3 rounded-xl'>2 Küp + 3 Küp = ?</div>", 
+                options: ["4", "5", "6", "7"], 
+                answer: "5" 
+            },
+
+            // Seviye 11-20: Boyutlar, Renkler ve İkişer Sayma
+            { 
+                level: 11, 
+                category: "Sayı Örüntüsü", 
+                title: "İkişer İlerleme", 
+                q: "Tavşan ikişer zıplıyor: 2, 4, 6, 8, ?. Sıradaki sayı kaçtır?", 
+                visual: "<div class='text-2xl font-bold text-emerald-600'>2 ➔ 4 ➔ 6 ➔ 8 ➔ <span class='text-rose-500 font-extrabold text-3xl'>?</span></div>", 
+                options: ["9", "10", "11", "12"], 
+                answer: "10" 
+            },
+            { 
+                level: 12, 
+                category: "3D Düşünme", 
+                title: "Kutuda Ne Var?", 
+                q: "Kare kutunun kaç tane düz yüzeyi vardır?", 
+                visual: "<div class='text-4xl text-amber-500 flex justify-center'><i class='fa-solid fa-cube'></i></div>", 
+                options: ["4", "5", "6", "8"], 
+                answer: "6" 
+            },
+            { 
+                level: 13, 
+                category: "Görsel Mantık", 
+                title: "Büyükten Küçüğe", 
+                q: "En büyük olan hayvan hangisidir?", 
+                visual: "<div class='text-3xl text-slate-700 flex justify-center gap-3 items-center'><i class='fa-solid fa-cat text-xl'></i><i class='fa-solid fa-dog text-2xl'></i><i class='fa-solid fa-elephant text-4xl text-indigo-600'></i></div>", 
+                options: ["Kedi", "Köpek", "Fil", "Hepsieşit"], 
+                answer: "Fil" 
+            },
+            { 
+                level: 14, 
+                category: "Kolay Toplama", 
+                title: "Yıldız Sayma", 
+                q: "5 sarı yıldız ile 5 mavi yıldız toplam kaç yıldız eder?", 
+                visual: "<div class='text-xl font-bold text-amber-500 flex justify-center gap-1'>⭐ ⭐ ⭐ ⭐ ⭐ + ⭐ ⭐ ⭐ ⭐ ⭐</div>", 
+                options: ["8", "9", "10", "12"], 
+                answer: "10" 
+            },
+            { 
+                level: 15, 
+                category: "3D Düşünme", 
+                title: "Top Rolleme", 
+                q: "Hangisi düz zeminde yuvarlanabilir?", 
+                visual: "<div class='text-3xl text-indigo-600 flex justify-center gap-4'><i class='fa-solid fa-cube text-slate-400'></i><i class='fa-solid fa-bowling-ball text-emerald-500'></i></div>", 
+                options: ["Küp Kutusu", "Top (Küre)", "Masa", "Kitap"], 
+                answer: "Top (Küre)" 
+            },
+            { 
+                level: 16, 
+                category: "Parça Bütün", 
+                title: "Eksik Dilim", 
+                q: "4 dilimlik pizzanın 1 dilimini yedik. Kaç dilim pizza kaldı?", 
+                visual: "<div class='text-3xl text-amber-500 flex justify-center'><i class='fa-solid fa-pizza-slice'></i><i class='fa-solid fa-pizza-slice'></i><i class='fa-solid fa-pizza-slice'></i></div>", 
+                options: ["2", "3", "4", "1"], 
+                answer: "3" 
+            },
+            { 
+                level: 17, 
+                category: "3D Düşünme", 
+                title: "Gizli Küp", 
+                q: "Üst üste 3 küp var ama sadece en üsttekini görüyoruz. Altında kaç küp saklıdır?", 
+                visual: "<div class='text-xl font-bold text-slate-700 bg-white p-3 rounded-xl text-center border border-slate-200'>Toplam Küp: 3 <br> Görünmeyen Küp Sayısı = ?</div>", 
+                options: ["1", "2", "3", "0"], 
+                answer: "2" 
+            },
+            { 
+                level: 18, 
+                category: "Sayı Örüntüsü", 
+                title: "Geriye Sayma", 
+                q: "10, 9, 8, 7, ?. Soru işareti yerine hangi sayı gelir?", 
+                visual: "<div class='text-2xl font-bold text-indigo-600'>10 ➔ 9 ➔ 8 ➔ 7 ➔ <span class='text-rose-500 text-3xl font-extrabold'>?</span></div>", 
+                options: ["4", "5", "6", "8"], 
+                answer: "6" 
+            },
+            { 
+                level: 19, 
+                category: "Görsel Mantık", 
+                title: "Ağır - Hafif", 
+                q: "Tahterevallide aşağıda duran çocuk hangisidir?", 
+                visual: "<div class='text-base font-bold text-slate-700 bg-slate-50 p-3 rounded-xl text-center'>Aşağıda olan daha AĞIRDIR.</div>", 
+                options: ["Ağır olan", "Hafif olan", "İkisi de", "Hiçbiri"], 
+                answer: "Ağır olan" 
+            },
+            { 
+                level: 20, 
+                category: "3D Düşünme", 
+                title: "Küp Sayma L Şekli", 
+                q: "L şeklinde dizilmiş küpleri sayın: Taban 2 küp, üstünde 1 küp. Kaç küp var?", 
+                visual: "<div class='text-3xl text-indigo-500 flex flex-col items-start justify-center pl-12'><i class='fa-solid fa-cube'></i><div class='flex gap-1'><i class='fa-solid fa-cube'></i><i class='fa-solid fa-cube'></i></div></div>", 
+                options: ["2", "3", "4", "5"], 
+                answer: "3" 
+            },
+
+            // Seviye 21-30: Mantık, Renk Örüntüleri ve Basit Toplamalar
+            { 
+                level: 21, 
+                category: "Kolay Toplama", 
+                title: "Kuş Saymaca", 
+                q: "Dala 3 kuş kondu, sonra 3 kuş daha geldi. Dalda kaç kuş oldu?", 
+                visual: "<div class='text-3xl text-sky-500 flex justify-center gap-2'><i class='fa-solid fa-crow'></i><i class='fa-solid fa-crow'></i><i class='fa-solid fa-crow'></i> + <i class='fa-solid fa-crow'></i><i class='fa-solid fa-crow'></i><i class='fa-solid fa-crow'></i></div>", 
+                options: ["5", "6", "7", "8"], 
+                answer: "6" 
+            },
+            { 
+                level: 22, 
+                category: "3D Düşünme", 
+                title: "Çadır Şekli", 
+                q: "Kamp çadırı 3 boyutlu şekillerden hangisine benzer?", 
+                visual: "<div class='text-4xl text-emerald-600 flex justify-center'><i class='fa-solid fa-campground'></i></div>", 
+                options: ["Üçgen Prizma", "Küre", "Küp", "Daire"], 
+                answer: "Üçgen Prizma" 
+            },
+            { 
+                level: 23, 
+                category: "Renk Örüntüsü", 
+                title: "Renk Sırası", 
+                q: "Kırmızı, Mavi, Kırmızı, Mavi, ?. Soru işareti hangi renktir?", 
+                visual: "<div class='text-2xl flex justify-center gap-2 font-bold'><span class='text-red-500'>🔴</span><span class='text-blue-500'>🔵</span><span class='text-red-500'>🔴</span><span class='text-blue-500'>🔵</span><span class='text-slate-400'>❓</span></div>", 
+                options: ["Kırmızı 🔴", "Mavi 🔵", "Yeşil 🟢", "Sarı 🟡"], 
+                answer: "Kırmızı 🔴" 
+            },
+            { 
+                level: 24, 
+                category: "Kolay Çıkarma", 
+                title: "Şeker Eksiltme", 
+                q: "8 şekerden 3 tanesini yersen kaç şekerin kalır?", 
+                visual: "<div class='text-2xl font-bold text-purple-600 text-center'>8 - 3 = <span class='text-rose-500 font-extrabold text-3xl'>?</span></div>", 
+                options: ["4", "5", "6", "7"], 
+                answer: "5" 
+            },
+            { 
+                level: 25, 
+                category: "3D Düşünme", 
+                title: "İki Katlı Ev", 
+                q: "Alt katta 4 küp, üst katta 2 küp var. Toplam kaç küp kullanılmıştır?", 
+                visual: "<div class='text-xl font-bold text-slate-800 text-center bg-amber-50 p-3 rounded-xl'>Alt Kat: 4 <br> Üst Kat: 2 <br> Toplam = ?</div>", 
+                options: ["5", "6", "7", "8"], 
+                answer: "6" 
+            },
+            { 
+                level: 26, 
+                category: "Görsel Yön", 
+                title: "Döndürme Mantığı", 
+                q: "Yukarı bakan ok ( ⬆ ) sağa dönerse hangi yönü gösterir?", 
+                visual: "<div class='text-4xl text-indigo-600 flex justify-center'><i class='fa-solid fa-arrow-up'></i></div>", 
+                options: ["⬆ (Yukarı)", "➔ (Sağ)", "⬇ (Aşağı)", "⬅ (Sol)"], 
+                answer: "➔ (Sağ)" 
+            },
+            { 
+                level: 27, 
+                category: "Sayı Örüntüsü", 
+                title: "Beşer Sayma", 
+                q: "5, 10, 15, ?. Sıradaki sayı kaçtır?", 
+                visual: "<div class='text-2xl font-bold text-emerald-600'>5 ➔ 10 ➔ 15 ➔ <span class='text-rose-500 text-3xl font-extrabold'>?</span></div>", 
+                options: ["16", "18", "20", "25"], 
+                answer: "20" 
+            },
+            { 
+                level: 28, 
+                category: "3D Düşünme", 
+                title: "Hangi Cisim?", 
+                q: "Futbol topu hangi 3 boyutlu şekle örnektir?", 
+                visual: "<div class='text-4xl text-slate-700 flex justify-center'><i class='fa-solid fa-futbol'></i></div>", 
+                options: ["Küre", "Küp", "Kare", "Piramit"], 
+                answer: "Küre" 
+            },
+            { 
+                level: 29, 
+                category: "Kolay Toplama", 
+                title: "Pencereleri Say", 
+                q: "Evde ön tarafta 4, arka tarafta 4 pencere var. Toplam pencere sayısı?", 
+                visual: "<div class='text-2xl font-bold text-indigo-600 text-center'>4 + 4 = <span class='text-rose-500 text-3xl font-extrabold'>?</span></div>", 
+                options: ["6", "7", "8", "9"], 
+                answer: "8" 
+            },
+            { 
+                level: 30, 
+                category: "3D Düşünme", 
+                title: "Küp Merdiven", 
+                q: "1. basamakta 1 küp, 2. basamakta 2 küp var. Toplam kaç küp var?", 
+                visual: "<div class='text-3xl text-amber-500 flex items-end justify-center gap-1'><i class='fa-solid fa-cube'></i><div class='flex flex-col'><i class='fa-solid fa-cube'></i><i class='fa-solid fa-cube'></i></div></div>", 
+                options: ["2", "3", "4", "5"], 
+                answer: "3" 
+            },
+
+            // Seviye 31-40: Görsel Hafıza, Eşitlik ve Küp Yapıları
+            { 
+                level: 31, 
+                category: "Eşitlik Mantığı", 
+                title: "Terazi Dengesi", 
+                q: "Sol kefede 5 elma var. Dengede olması için sağ kefeye kaç elma koymalıyız?", 
+                visual: "<div class='text-2xl font-bold text-slate-700 text-center bg-white p-3 rounded-xl border border-slate-200'>Sol = 5 🍎 | Sağ = <span class='text-rose-500'>?</span> 🍎</div>", 
+                options: ["3", "4", "5", "6"], 
+                answer: "5" 
+            },
+            { 
+                level: 32, 
+                category: "3D Düşünme", 
+                title: "Silindir Şekli", 
+                q: "Boya kutusu veya konserve kutusu hangi 3D şekle benzer?", 
+                visual: "<div class='text-4xl text-red-500 flex justify-center'><i class='fa-solid fa-can-food'></i></div>", 
+                options: ["Silindir", "Küp", "Piramit", "Üçgen"], 
+                answer: "Silindir" 
+            },
+            { 
+                level: 33, 
+                category: "Kolay Çıkarma", 
+                title: "Havuç Sayma", 
+                q: "Tavşanın 10 havucu vardı. 4 tanesini yedi. Kaç havucu kaldı?", 
+                visual: "<div class='text-2xl font-bold text-orange-500 text-center'>10 - 4 = <span class='text-indigo-600 font-extrabold text-3xl'>?</span></div>", 
+                options: ["5", "6", "7", "8"], 
+                answer: "6" 
+            },
+            { 
+                level: 34, 
+                category: "Görsel Mantık", 
+                title: "Tamamlayıcı Şekil", 
+                q: "Kareyi tamamlamak için 2 üçgen birleşirse hangi şekil oluşur?", 
+                visual: "<div class='text-3xl text-indigo-600 flex justify-center gap-2'><i class='fa-solid fa-play -rotate-90'></i> + <i class='fa-solid fa-play rotate-90'></i> = ?</div>", 
+                options: ["Kare", "Daire", "Çizgi", "Yıldız"], 
+                answer: "Kare" 
+            },
+            { 
+                level: 35, 
+                category: "3D Düşünme", 
+                title: "Üst Üste 4 Küp", 
+                q: "Üst üste konmuş 4 küpten en alttakini çıkarırsak üstte kaç küp kalır?", 
+                visual: "<div class='text-xl font-bold text-slate-800 text-center bg-slate-50 p-3 rounded-xl'>4 Küp - 1 Küp = ?</div>", 
+                options: ["2", "3", "4", "1"], 
+                answer: "3" 
+            },
+            { 
+                level: 36, 
+                category: "Sayı Örüntüsü", 
+                title: "İkişer Geriye", 
+                q: "10, 8, 6, 4, ?. Sıradaki sayı kaçtır?", 
+                visual: "<div class='text-2xl font-bold text-slate-700'>10 ➔ 8 ➔ 6 ➔ 4 ➔ <span class='text-rose-500 text-3xl font-extrabold'>?</span></div>", 
+                options: ["1", "2", "3", "0"], 
+                answer: "2" 
+            },
+            { 
+                level: 37, 
+                category: "Kolay Toplama", 
+                title: "Balık Sayma", 
+                q: "Avaryumda 7 turuncu balık ve 3 mavi balık var. Toplam kaç balık var?", 
+                visual: "<div class='text-2xl font-bold text-sky-600 text-center'>7 + 3 = <span class='text-rose-500 font-extrabold text-3xl'>?</span></div>", 
+                options: ["9", "10", "11", "12"], 
+                answer: "10" 
+            },
+            { 
+                level: 38, 
+                category: "3D Düşünme", 
+                title: "Gölge Boyu", 
+                q: "Güneş tam tepedeyken gölgemiz nasıl görünür?", 
+                visual: "<div class='text-4xl text-amber-500 flex justify-center'><i class='fa-solid fa-sun'></i></div>", 
+                options: ["Çok Kısa", "Çok Uzun", "Gece Gibi", "Hiç Yok"], 
+                answer: "Çok Kısa" 
+            },
+            { 
+                level: 39, 
+                category: "Şekil Eşleştirme", 
+                title: "Benzer Şekil", 
+                q: "Tekerlek hangi şekle benzer?", 
+                visual: "<div class='text-4xl text-slate-700 flex justify-center'><i class='fa-solid fa-compact-disc'></i></div>", 
+                options: ["Daire", "Kare", "Üçgen", "Dikdörtgen"], 
+                answer: "Daire" 
+            },
+            { 
+                level: 40, 
+                category: "3D Düşünme", 
+                title: "Küp Blokları", 
+                q: "Yan yana 2, üst üste 2 küp koyarsak toplam kaç küp olur?", 
+                visual: "<div class='text-3xl text-indigo-600 flex flex-col items-center gap-1'><div class='flex gap-1'><i class='fa-solid fa-cube'></i><i class='fa-solid fa-cube'></i></div><div class='flex gap-1'><i class='fa-solid fa-cube'></i><i class='fa-solid fa-cube'></i></div></div>", 
+                options: ["3", "4", "5", "6"], 
+                answer: "4" 
+            },
+
+            // Seviye 41-50: Final 1. Sınıf BİLSEM Soruları
+            { 
+                level: 41, 
+                category: "Kolay Toplama", 
+                title: "Puan Toplama", 
+                q: "İlk oyunda 6 puan, ikinci oyunda 5 puan aldın. Toplam puanın kaç?", 
+                visual: "<div class='text-2xl font-bold text-amber-600 text-center'>6 + 5 = <span class='text-indigo-600 font-extrabold text-3xl'>?</span></div>", 
+                options: ["10", "11", "12", "13"], 
+                answer: "11" 
+            },
+            { 
+                level: 42, 
+                category: "3D Düşünme", 
+                title: "Piramit Sayma", 
+                q: "Mısır piramitlerinin kaç tane sivri tepesi vardır?", 
+                visual: "<div class='text-4xl text-amber-600 flex justify-center'><i class='fa-solid fa-mountain'></i></div>", 
+                options: ["1", "2", "3", "4"], 
+                answer: "1" 
+            },
+            { 
+                level: 43, 
+                category: "Sayı Örüntüsü", 
+                title: "Üçer Sayma", 
+                q: "3, 6, 9, ?. Sıradaki sayı hangisidir?", 
+                visual: "<div class='text-2xl font-bold text-emerald-600'>3 ➔ 6 ➔ 9 ➔ <span class='text-rose-500 text-3xl font-extrabold'>?</span></div>", 
+                options: ["10", "11", "12", "13"], 
+                answer: "12" 
+            },
+            { 
+                level: 44, 
+                category: "Kolay Çıkarma", 
+                title: "Kalem Eksiltme", 
+                q: "Kutuda 9 kalem var. 5 tanesini arkadaşına verdin. Kaç kalem kaldı?", 
+                visual: "<div class='text-2xl font-bold text-indigo-600 text-center'>9 - 5 = <span class='text-rose-500 font-extrabold text-3xl'>?</span></div>", 
+                options: ["3", "4", "5", "6"], 
+                answer: "4" 
+            },
+            { 
+                level: 45, 
+                category: "3D Düşünme", 
+                title: "Küp Yapısı", 
+                q: "3 küp alt sırada, 2 küp üst sırada var. Toplam küp sayısı?", 
+                visual: "<div class='text-3xl text-amber-500 flex flex-col items-center gap-1'><div class='flex gap-1'><i class='fa-solid fa-cube'></i><i class='fa-solid fa-cube'></i></div><div class='flex gap-1'><i class='fa-solid fa-cube'></i><i class='fa-solid fa-cube'></i><i class='fa-solid fa-cube'></i></div></div>", 
+                options: ["4", "5", "6", "7"], 
+                answer: "5" 
+            },
+            { 
+                level: 46, 
+                category: "Görsel Mantık", 
+                title: "Gece - Gündüz", 
+                q: "Güneş gökyüzündeyse zaman gündüzdür. Ay ve yıldızlar varsa zamandır?", 
+                visual: "<div class='text-4xl text-indigo-700 flex justify-center gap-3'><i class='fa-solid fa-moon'></i><i class='fa-solid fa-star text-2xl'></i></div>", 
+                options: ["Gündüz", "Gece", "Öğlen", "Sabah"], 
+                answer: "Gece" 
+            },
+            { 
+                level: 47, 
+                category: "Kolay Toplama", 
+                title: "Çilek Toplama", 
+                q: "8 çilek tabağa koyduk, 4 çilek daha ekledik. Kaç çilek oldu?", 
+                visual: "<div class='text-2xl font-bold text-rose-500 text-center'>8 + 4 = <span class='text-indigo-600 font-extrabold text-3xl'>?</span></div>", 
+                options: ["11", "12", "13", "14"], 
+                answer: "12" 
+            },
+            { 
+                level: 48, 
+                category: "3D Düşünme", 
+                title: "Kutu Yüzeyi", 
+                q: "Hediye paketinin üst yüzeyine bakarsak hangi şekli görürüz?", 
+                visual: "<div class='text-4xl text-rose-500 flex justify-center'><i class='fa-solid fa-gift'></i></div>", 
+                options: ["Kare", "Daire", "Üçgen", "Çizgi"], 
+                answer: "Kare" 
+            },
+            { 
+                level: 49, 
+                category: "Sayı Örüntüsü", 
+                title: "Son Adım Örüntü", 
+                q: "1, 3, 5, 7, ?. Soru işareti yerine hangi sayı gelir?", 
+                visual: "<div class='text-2xl font-bold text-indigo-600'>1 ➔ 3 ➔ 5 ➔ 7 ➔ <span class='text-rose-500 text-3xl font-extrabold'>?</span></div>", 
+                options: ["8", "9", "10", "11"], 
+                answer: "9" 
+            },
+            { 
+                level: 50, 
+                category: "BİLSEM 1. SINIF FİNAL", 
+                title: "Şampiyonluk Sorusu", 
+                q: "5 kırmızı küp, 5 mavi küp ve 5 sarı küpü üst üste koyarsak toplam kaç küp olur?", 
+                visual: "<div class='text-xl font-bold text-amber-500 animate-pulse text-center bg-slate-50 p-3 rounded-xl'>5 + 5 + 5 = <span class='text-rose-500 font-extrabold text-3xl'>?</span></div>", 
+                options: ["12", "15", "18", "20"], 
+                answer: "15" 
+            }
+        ];
+
+        // INITIALIZE APP
+        window.onload = () => {
+            updateScoreUI();
+            renderLevelMap();
+        };
+
+        // Render Level Map Screen
+        function renderLevelMap() {
+            document.getElementById('levelMapView').classList.remove('hidden');
+            document.getElementById('gameView').classList.add('hidden');
+            document.getElementById('headerSubtitle').innerText = "50 Seviyeli Mantık Oyunu";
+
+            const grid = document.getElementById('levelsGrid');
+            grid.innerHTML = '';
+
+            for (let i = 1; i <= 50; i++) {
+                const isUnlocked = i <= unlockedLevel;
+                const isCurrent = i === unlockedLevel;
+
+                const btn = document.createElement('button');
+                btn.className = `w-12 h-12 sm:w-14 sm:h-14 rounded-2xl font-bold text-base sm:text-lg flex flex-col items-center justify-center transition-all btn-bounce relative ${
+                    isUnlocked 
+                        ? isCurrent 
+                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-300 border-2 border-indigo-400 level-current' 
+                            : 'bg-emerald-500 text-white shadow-md hover:bg-emerald-600'
+                        : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                }`;
+
+                btn.disabled = !isUnlocked;
+                btn.onclick = () => startLevel(i);
+
+                if (isUnlocked) {
+                    if (i < unlockedLevel) {
+                        btn.innerHTML = `<span>${i}</span><i class="fa-solid fa-check text-[10px] opacity-80"></i>`;
+                    } else {
+                        btn.innerHTML = `<span>${i}</span><i class="fa-solid fa-play text-[10px] opacity-80"></i>`;
+                    }
+                } else {
+                    btn.innerHTML = `<span>${i}</span><i class="fa-solid fa-lock text-[10px]"></i>`;
+                }
+
+                grid.appendChild(btn);
+            }
+
+            document.getElementById('progressText').innerText = `İlerleme: ${unlockedLevel - 1} / 50`;
+        }
+
+        // Show Level Map from Button
+        function showLevelMap() {
+            playSound('click');
+            renderLevelMap();
+        }
+
+        // Start Question Game
+        function startLevel(lvlNum) {
+            playSound('click');
+            currentLevel = lvlNum;
+            const qData = questions.find(q => q.level === lvlNum);
+
+            if (!qData) return;
+
+            document.getElementById('levelMapView').classList.add('hidden');
+            document.getElementById('gameView').classList.remove('hidden');
+
+            document.getElementById('levelBadge').innerText = `SEVİYE ${qData.level}`;
+            document.getElementById('categoryBadge').innerText = qData.category;
+            document.getElementById('questionText').innerText = qData.q;
+            document.getElementById('visualContainer').innerHTML = qData.visual;
+
+            // Render Options
+            const optionsGrid = document.getElementById('optionsGrid');
+            optionsGrid.innerHTML = '';
+
+            // Shuffle options for variety
+            const shuffledOptions = [...qData.options].sort(() => Math.random() - 0.5);
+
+            shuffledOptions.forEach(opt => {
+                const optBtn = document.createElement('button');
+                optBtn.className = "w-full bg-white hover:bg-indigo-50 border-2 border-slate-200 hover:border-indigo-400 text-slate-700 font-bold py-3 px-4 rounded-2xl shadow-sm text-sm sm:text-base transition btn-bounce flex items-center justify-center min-h-[52px]";
+                optBtn.innerText = opt;
+                optBtn.onclick = () => checkAnswer(opt, qData.answer, optBtn);
+                optionsGrid.appendChild(optBtn);
+            });
+        }
+
+        // Check Answer Logic
+        function checkAnswer(selected, correct, btnElement) {
+            const allBtns = document.querySelectorAll('#optionsGrid button');
+            allBtns.forEach(b => b.disabled = true);
+
+            if (selected === correct) {
+                // Correct Answer
+                playSound('correct');
+                btnElement.classList.remove('bg-white', 'border-slate-200');
+                btnElement.classList.add('bg-emerald-500', 'text-white', 'border-emerald-600', 'animate-pulse');
+
+                score += 20;
+                localStorage.setItem('bilsem_score', score);
+                updateScoreUI();
+
+                // Unlock Next Level
+                if (currentLevel === unlockedLevel && unlockedLevel < 50) {
+                    unlockedLevel++;
+                    localStorage.setItem('bilsem_unlocked', unlockedLevel);
+                }
+
+                // Trigger Confetti
+                confetti({
+                    particleCount: 50,
+                    spread: 60,
+                    origin: { y: 0.7 }
+                });
+
+                setTimeout(() => {
+                    showSuccessModal();
+                }, 700);
+
+            } else {
+                // Wrong Answer
+                playSound('wrong');
+                btnElement.classList.remove('bg-white', 'border-slate-200');
+                btnElement.classList.add('bg-rose-500', 'text-white', 'border-rose-600');
+
+                // Highlight correct one
+                allBtns.forEach(b => {
+                    if (b.innerText === correct) {
+                        b.classList.add('bg-emerald-100', 'border-emerald-400', 'text-emerald-800');
+                    }
+                });
+
+                setTimeout(() => {
+                    alert("Yanlış cevap! Tekrar deneyin.");
+                    startLevel(currentLevel); // Retry
+                }, 1000);
+            }
+        }
+
+        // Show Success Modal
+        function showSuccessModal() {
+            const modal = document.getElementById('modalOverlay');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalDesc = document.getElementById('modalDesc');
+            const nextBtn = document.getElementById('modalNextBtn');
+
+            if (currentLevel === 50) {
+                modalTitle.innerText = "Tebrikler Şampiyon! 🎉";
+                modalDesc.innerText = "50 Seviyenin tamamını bitirerek BİLSEM Zeka Parkurunu tamamladın!";
+                nextBtn.innerHTML = `<span>Ana Menüye Dön</span> <i class="fa-solid fa-house"></i>`;
+                nextBtn.onclick = () => {
+                    modal.classList.add('hidden');
+                    renderLevelMap();
+                };
+            } else {
+                modalTitle.innerText = "Tebrikler!";
+                modalDesc.innerText = `Seviye ${currentLevel} tamamlandı. +20 Puan Kazandın!`;
+                nextBtn.innerHTML = `<span>Sonraki Seviye</span> <i class="fa-solid fa-arrow-right"></i>`;
+                nextBtn.onclick = () => {
+                    modal.classList.add('hidden');
+                    startLevel(currentLevel + 1);
+                };
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        // Update Score UI
+        function updateScoreUI() {
+            document.getElementById('scoreDisplay').innerText = score;
+        }
+
+        // Reset All Progress
+        function resetProgress() {
+            if (confirm("Tüm ilerlemeniz sıfırlanacak. Emin misiniz?")) {
+                localStorage.removeItem('bilsem_unlocked');
+                localStorage.removeItem('bilsem_score');
+                unlockedLevel = 1;
+                score = 0;
+                updateScoreUI();
+                renderLevelMap();
+            }
+        }
+    </script>
+</body>
+</html>
